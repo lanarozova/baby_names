@@ -92,14 +92,10 @@ def get_pop_unpop_names(
         return [year, name, number]
 
 
-def get_merged_table_data():
-    pass
-
-
 def print_statistics(table_values: list[list[str]], popular: int, sex: int) -> None:
     """
     Prints table with filtered data depending on the incoming parameters: years, sex, pop/unpop names
-    :param table_data: list of lists with table column data (rows)
+    :param table_values: list of lists with table column data (rows)
     :param popular: Used to name the column depending on what names are needed: most popular or unpopular
     :return: nothing, prints table
     """
