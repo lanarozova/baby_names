@@ -1,39 +1,24 @@
 import re
 from typing import Optional
-import datetime
-from collections import defaultdict
-
-
-CURRENT_YEAR = datetime.date.today().year
-
-
-def check_year(year: str) -> bool:
-    if '1900' <= year <= str(CURRENT_YEAR):
-        return True
-    return False
+from handlers.errors import check_year
 
 
 def filter_files_names(files: list[str]):
     filtered_names = {
-        "boys": {},
-        "girls": {}
+        1: {},
+        0: {}
     }
 
     for file in files:
 
         match = re.match(r'^(19[0-9]{2}|20[0-9]{2})_(BoysNames|GirlsNames)\.txt$', file)
         if match:
-            sex = 'boys' if 'Boys' in match.group() else 'girls'
+            sex = 1 if 'Boys' in match.group() or 'boys' in match.group() else 0
             year = match.group()[:4]
             if check_year(year):
                 filtered_names[sex][year] = file
 
     return filtered_names
-
-
-def sort_names(names: dict[str, int]) -> list[tuple]:
-    sorted_names = sorted(names.items(), key=lambda item: item[1], reverse=True)
-    return sorted_names
 
 
 def parse_names_from_lines(line: str) -> Optional[tuple[str, int]]:
@@ -44,3 +29,7 @@ def parse_names_from_lines(line: str) -> Optional[tuple[str, int]]:
         return name, int(qty)
     return None
 
+
+def sort_names(names: dict[str, int]) -> list[tuple]:
+    sorted_names = sorted(names.items(), key=lambda item: item[1], reverse=True)
+    return sorted_names
