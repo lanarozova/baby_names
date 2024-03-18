@@ -3,7 +3,6 @@ import os
 from handlers.errors import check_folder_exists, check_year
 from handlers.files import get_list_of_files, read_data_from_file
 from handlers.normalizers import filter_files_names, sort_names
-from collections import defaultdict
 from prettytable import PrettyTable
 import argparse
 
@@ -41,7 +40,7 @@ def get_possible_years(years: str, first_year_in_files, last_year_in_files) -> l
     return [
         year for year
         in years_r
-        if check_year(year) and year <= last_year_in_files
+        if check_year(year) and first_year_in_files <= year <= last_year_in_files
     ]
 
 
@@ -74,9 +73,9 @@ def get_names_from_specific_file(folder: str, file: str) -> dict[str, list[tuple
     return result_names
 
 
-def get_pop_unpop_names(
+def get_pop_or_unpop_names(
         names_for_specific_year: dict[str, list[tuple]],
-        popular: int
+        popular: int,
 ) -> list[str]:
     """
     Depending on popular flag, finds most popular or unpopular name in names_for_specific_year
@@ -92,21 +91,25 @@ def get_pop_unpop_names(
         return [year, name, number]
 
 
-def print_statistics(table_values: list[list[str]], popular: int, sex: int) -> None:
+def join_pop_and_unpop_names(pop_names: list[str], unpop_names: list[str]) -> list[str]:
+    pop_and_unpop = []
+    pop_and_unpop.extend(pop_names)
+    pop_and_unpop.extend(unpop_names[1:])
+    return pop_and_unpop
+
+
+def create_table(table_fields: list[str], table_values: list[list[str]]) -> PrettyTable:
     """
-    Prints table with filtered data depending on the incoming parameters: years, sex, pop/unpop names
+    Creates table depending on the incoming parameters
     :param table_values: list of lists with table column data (rows)
-    :param popular: Used to name the column depending on what names are needed: most popular or unpopular
-    :return: nothing, prints table
+    :param table_fields: list of str names for table columns
+    :return: table object
     """
     table = PrettyTable()
-    pop = "most popular names" if popular else "most unpopular names"
-    sex = 'boys' if sex else 'girls'
-    table.field_names = ["Year", pop.capitalize(), "Number"]
-    print(f"\nThe {pop} for {sex} were: ")
+    table.field_names = table_fields
     for row in table_values:
         table.add_row(row)
-    print(table)
+    return table
 
 
 def main(folder: str, years: str = "all", sex: int = 10, popular: int = 10) -> None:
@@ -122,24 +125,40 @@ def main(folder: str, years: str = "all", sex: int = 10, popular: int = 10) -> N
     sex = switcher(sex)
     popular = switcher(popular)
 
+    # gathering table data depending on the inserted parameters: sex, popular, years
     for s in sex:
         first_year_in_files = min(files_filtered[s])
-        last_year_in_files = max(files_filtered[s].keys())
+        last_year_in_files = max(files_filtered[s])
         possible_years = get_possible_years(years, first_year_in_files, last_year_in_files)
-        pop_unpop_names_for_years = defaultdict(list)
+
+        table_values = []
+        table_fields = []
+
+        sex_str = 'boys' if s else 'girls'
 
         for year in possible_years:
             file = files_filtered[s][year]
             names_for_current_year = get_names_from_specific_file(folder, file)
-            for pop_state in popular:
-                pop_unpop_names_for_years[pop_state].append(get_pop_unpop_names(names_for_current_year, pop_state))
 
-        for pop_state in popular:
-            # print(f"\nThe {pop}s for {s} in {', '.join(possible_years)} were: \n")
-            print_statistics(pop_unpop_names_for_years[pop_state], pop_state, s)
+            if len(popular) == 2:
+                pop_names = get_pop_or_unpop_names(names_for_current_year, popular[0])
+                unpop_names = get_pop_or_unpop_names(names_for_current_year, popular[1])
+                table_values.append(join_pop_and_unpop_names(pop_names, unpop_names))
+                table_fields = ["Year", "Most popular", "Count_popular", "Most unpopular", "Count_unpopular"]
+
+            else:
+                table_values.append(get_pop_or_unpop_names(names_for_current_year, popular[0]))
+                pop = "most popular" if popular[0] else "most unpopular"
+                table_fields = ["Year", pop.capitalize(), "Count"]
+        # printing table
+        if len(table_fields) < 5:
+            print(f"\nThe {table_fields[1].lower()} names for {sex_str} in {years} years were: \n")
+        else:
+            print(f"\nThe most popular and most unpopular names for {sex_str} in {years} years were: \n")
+        print(create_table(table_fields, table_values))
 
 
-if __name__ == '__main__':
+def baby_names_args_parser():
     # adding command line parser
     parser = argparse.ArgumentParser(
         prog="baby_names",
@@ -162,6 +181,7 @@ if __name__ == '__main__':
         type=str,
         help="Enter year, several years or range of years in the following format: "
              "'2000' - for a single year | '1990,1992,2000' - for separate several years | '1990-1992' for years range"
+             "If nothing is stated, stats for all years found in files will be printed"
     )
     parser.add_argument(
         "-s", "--sex",
@@ -183,14 +203,23 @@ if __name__ == '__main__':
              "1 for popular | 0 for unpopular"
              "If nothing is stated, stats for both will be found and printed"
     )
-
     args = parser.parse_args()
-    folder = args.folder
-    years = args.years
-    sex = args.sex
-    pop = args.popular
+    return args
+
+
+if __name__ == '__main__':
+    cli_run = False
+
+    folder = 'data'
+    years = '1990-2001'
+    sex = 1
+    pop = 10
+
+    if cli_run:
+        args = baby_names_args_parser()
+        folder = args.folder
+        years = args.years
+        sex = args.sex
+        pop = args.popular
 
     main(folder, years, sex, pop)
-    # folder1 = 'data'
-    # main(folder1, popular=True, sex=1)
-

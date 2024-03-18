@@ -17,4 +17,3 @@ def read_data_from_file(path: str) -> dict[str, int]:
                 name, qty = line
                 names[name] = qty
     return names
-
